@@ -611,6 +611,29 @@ class SpatialNavigationService {
     draw();
   }
 
+  drawComponentCorners(focusKey: string, color: string) {
+    const component = this.focusableComponents[focusKey];
+    const { layout } = component;
+    if (layout) {
+      const { left, top, width, height } = layout;
+      const leftEdge = left;
+      const topEdge = top;
+      const rightEdge = leftEdge + width;
+      const bottomEdge = topEdge + height;
+      
+      const corners = [
+        { x: leftEdge, y: topEdge },
+        { x: rightEdge, y: topEdge },
+        { x: leftEdge, y: bottomEdge },
+        { x: rightEdge, y: bottomEdge }
+      ];
+
+      corners.forEach((corner) => {
+        this.visualDebugger.drawPoint(corner.x, corner.y, color, 6);
+      });
+    }
+  }
+
   destroy() {
     if (this.enabled) {
       this.enabled = false;
@@ -767,6 +790,17 @@ class SpatialNavigationService {
 
       return;
     }
+
+
+    if (this.visualDebugger) {
+      this.drawComponentCorners(this.focusKey, 'green');
+  
+      this.updateLayout(this.focusKey);
+  
+      this.drawComponentCorners(this.focusKey, 'red');
+    }
+
+    this.log('onEnterRelease', 'layout', component);
 
     if (component.onEnterRelease) {
       component.onEnterRelease();
