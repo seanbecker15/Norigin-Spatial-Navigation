@@ -1,16 +1,29 @@
+// @ts-ignore
+import offset from 'document-offset';
+
+const USE_CUSTOM_LAYOUT = true;
+
 const ELEMENT_NODE = 1;
 
 const getRect = (node: HTMLElement) => {
   let offsetParent = node.offsetParent as HTMLElement;
   const height = node.offsetHeight;
   const width = node.offsetWidth;
-  let left = node.offsetLeft;
-  let top = node.offsetTop;
 
-  while (offsetParent && offsetParent.nodeType === ELEMENT_NODE) {
-    left += offsetParent.offsetLeft - offsetParent.scrollLeft;
-    top += offsetParent.offsetTop - offsetParent.scrollTop;
-    offsetParent = offsetParent.offsetParent as HTMLElement;
+  let left;
+  let top;
+
+  if (USE_CUSTOM_LAYOUT) {
+    left = node.offsetLeft;
+    top = node.offsetTop;
+
+    while (offsetParent && offsetParent.nodeType === ELEMENT_NODE) {
+      left += offsetParent.offsetLeft - offsetParent.scrollLeft;
+      top += offsetParent.offsetTop - offsetParent.scrollTop;
+      offsetParent = offsetParent.offsetParent as HTMLElement;
+    }
+  } else {
+    ({ left, top } = offset(node));
   }
 
   return {
