@@ -20,7 +20,6 @@ For example: hyperlinks, buttons, menu items or any interactible part of the Use
 # Supported Devices
 The Norigin Spatial Navigation library is theoretically intended to work on any web-based platform such as Browsers and Smart TVs.
 For as long as the UI/UX is built with the React Framework, it works on the Samsung Tizen TVs, LG WebOS TVs, Hisense Vidaa TVs and a range of other Connected TVs.
-It can also be used in React Native apps on Android TV and Apple TV, however functionality will be limited.
 This library is actively used and continuously tested on many devices and updated periodically in the table below:
 
 | Platform | Name |
@@ -28,7 +27,6 @@ This library is actively used and continuously tested on many devices and update
 | Web Browsers | Chrome, Firefox, etc. |
 | Smart TVs | [Samsung Tizen](https://developer.tizen.org/?langswitch=en), [LG WebOS](https://webostv.developer.lge.com/), Hisense |
 | Other Connected TV devices | Browser Based settop boxes with Chromium, Ekioh or Webkit browsers |
-| AndroidTV, AppleTV | Only [React Native](https://reactnative.dev/docs/building-for-tv) apps, limited functionality |
 
 # Related Blogs
 1. Use & benefits of using the Norigin Spatial Navigation library on Smart TVs [here](https://medium.com/p/77ed944d7be7).
@@ -182,32 +180,6 @@ function Popup() {
 }
 ```
 
-## Using the library in React Native environment
-In React Native environment the navigation between focusable (Touchable) components is happening under the hood by the
-native focusable engine. This library is NOT doing any coordinates measurements or navigation decisions in the native environment.
-But it can still be used to keep the currently focused element node reference and its focused state, which can be used to
-highlight components based on the `focused` or `hasFocusedChild` flags.
-
-```jsx
-import { TouchableOpacity, Text } from 'react-native';
-import { useFocusable } from '@noriginmedia/norigin-spatial-navigation';
-
-function Button() {
-  const { ref, focused, focusSelf } = useFocusable();
-
-  return (<TouchableOpacity
-    ref={ref}
-    onFocus={focusSelf}
-    style={focused ? styles.buttonFocused : styles.button}
-  >
-    <Text>Press me</Text>
-  </TouchableOpacity>);
-}
-```
-IMPORTANT TO NOTE:
-- [Native mode](#nativemode-boolean-default-false) needs to be **enabled** during initialization when using the library in a React Native environment
-- In order to "sync" the focus events coming from the native focus engine to the hook the `onFocus` callback needs to be linked with the `focusSelf` method. This way the hook will know that the component became focused and will set the `focused` flag accordingly.
-
 # API
 ## Top Level exports
 ### `init`
@@ -217,22 +189,6 @@ Enables console debugging.
 
 ##### `visualDebug`: boolean (default: false)
 Enables visual debugging (all layouts, reference points and siblings reference points are printed on canvases).
-
-##### `nativeMode`: boolean (default: false)
-Enables Native mode. It will **disable** certain web-only functionality:
-- adding window key listeners
-- measuring DOM layout
-- `onFocus` and `onBlur` callbacks don't return coordinates, but still return node ref which can be used to measure layout if needed
-- coordinates calculations when navigating (`smartNavigate` in `SpatialNavigation.ts`)
-- `navigateByDirection`
-- focus propagation down the Tree
-- last focused child feature
-- preferred focus key feature
-
-In other words, in the Native mode this library **DOES NOT** set the native focus anywhere via the native focus engine.
-Native mode should be only used to keep the Tree of focusable components and to set the `focused` and `hasFocusedChild` flags to enable styling for focused components and containers.
-In Native mode you can only call `focusSelf` in the component that gets **native** focus (via `onFocus` callback of the `Touchable` components) to flag it as `focused`.
-Manual `setFocus` method is blocked because it will not propagate to the native focus engine and won't do anything.
 
 ##### `throttle`: integer (default: 0)
 Enables throttling of the key event listener.
@@ -410,7 +366,7 @@ interface FocusableComponentLayout {
   height: number;
   x: number; // relative to the parent DOM element
   y: number; // relative to the parent DOM element
-  node: HTMLElement; // or the reference to the native component in React Native
+  node: HTMLElement;
 }
 ```
 
@@ -477,7 +433,7 @@ Here are some of the challenges encountered during the migration process:
 ### Getting node reference
 HOC implementation used a `findDOMNode` API to find a reference to a current DOM element wrapped with the HOC:
 ```js
-const node = SpatialNavigation.isNativeMode() ? this : findDOMNode(this);
+const node = findDOMNode(this);
 ```
 Note that `this` was pointing to an actual component instance even when it was called inside `lifecycle` HOC from `recompose`
 allowing to always find the top-level DOM element, without any additional code required to point to a specific DOM node.

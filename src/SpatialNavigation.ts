@@ -172,13 +172,6 @@ class SpatialNavigationService {
   private enabled: boolean;
 
   /**
-   * Used in the React Native environment
-   * In this mode, the library works as a "read-only" helper to sync focused
-   * states for the components when they are focused by the native focus engine
-   */
-  private nativeMode: boolean;
-
-  /**
    * Throttling delay for key presses in milliseconds
    */
   private throttle: number;
@@ -517,7 +510,6 @@ class SpatialNavigationService {
     this.parentsHavingFocusedChild = [];
 
     this.enabled = false;
-    this.nativeMode = false;
     this.throttle = 0;
     this.throttleKeypresses = false;
 
@@ -554,26 +546,22 @@ class SpatialNavigationService {
   init({
     debug = false,
     visualDebug = false,
-    nativeMode = false,
     throttle: throttleParam = 0,
     throttleKeypresses = false
   } = {}) {
     if (!this.enabled) {
       this.enabled = true;
-      this.nativeMode = nativeMode;
       this.throttleKeypresses = throttleKeypresses;
 
       this.debug = debug;
 
-      if (!this.nativeMode) {
-        if (Number.isInteger(throttleParam) && throttleParam > 0) {
-          this.throttle = throttleParam;
-        }
-        this.bindEventHandlers();
-        if (visualDebug) {
-          this.visualDebugger = new VisualDebugger();
-          this.startDrawLayouts();
-        }
+      if (Number.isInteger(throttleParam) && throttleParam > 0) {
+        this.throttle = throttleParam;
+      }
+      this.bindEventHandlers();
+      if (visualDebug) {
+        this.visualDebugger = new VisualDebugger();
+        this.startDrawLayouts();
       }
     }
   }
@@ -584,13 +572,11 @@ class SpatialNavigationService {
   } = {}) {
     this.throttleKeypresses = throttleKeypresses;
 
-    if (!this.nativeMode) {
-      this.unbindEventHandlers();
-      if (Number.isInteger(throttleParam)) {
-        this.throttle = throttleParam;
-      }
-      this.bindEventHandlers();
+    this.unbindEventHandlers();
+    if (Number.isInteger(throttleParam)) {
+      this.throttle = throttleParam;
     }
+    this.bindEventHandlers();
   }
 
   startDrawLayouts() {
@@ -620,7 +606,7 @@ class SpatialNavigationService {
       const topEdge = top;
       const rightEdge = leftEdge + width;
       const bottomEdge = topEdge + height;
-      
+
       const corners = [
         { x: leftEdge, y: topEdge },
         { x: rightEdge, y: topEdge },
@@ -637,7 +623,6 @@ class SpatialNavigationService {
   destroy() {
     if (this.enabled) {
       this.enabled = false;
-      this.nativeMode = false;
       this.throttle = 0;
       this.throttleKeypresses = false;
       this.focusKey = null;
@@ -791,12 +776,11 @@ class SpatialNavigationService {
       return;
     }
 
-
     if (this.visualDebugger) {
       this.drawComponentCorners(this.focusKey, 'green');
-  
+
       this.updateLayout(this.focusKey);
-  
+
       this.drawComponentCorners(this.focusKey, 'red');
     }
 
@@ -834,7 +818,7 @@ class SpatialNavigationService {
    * navigateByDirection('right') // The focus is moved to right
    */
   navigateByDirection(direction: string, focusDetails: FocusDetails) {
-    if (this.paused === true || this.nativeMode) {
+    if (this.paused === true) {
       return;
     }
 
@@ -878,10 +862,6 @@ class SpatialNavigationService {
     fromParentFocusKey: string,
     focusDetails: FocusDetails
   ) {
-    if (this.nativeMode) {
-      return;
-    }
-
     this.log('smartNavigate', 'direction', direction);
     this.log('smartNavigate', 'fromParentFocusKey', fromParentFocusKey);
     this.log('smartNavigate', 'this.focusKey', this.focusKey);
@@ -1046,7 +1026,7 @@ class SpatialNavigationService {
     /**
      * Security check, if component doesn't exist, stay on the same focusKey
      */
-    if (!targetComponent || this.nativeMode) {
+    if (!targetComponent) {
       return targetFocusKey;
     }
 
@@ -1174,10 +1154,6 @@ class SpatialNavigationService {
       layoutUpdated: false
     };
 
-    if (this.nativeMode) {
-      return;
-    }
-
     this.updateLayout(focusKey);
 
     /**
@@ -1204,10 +1180,6 @@ class SpatialNavigationService {
        */
       if (parentComponent && parentComponent.lastFocusedChildKey === focusKey) {
         parentComponent.lastFocusedChildKey = null;
-      }
-
-      if (this.nativeMode) {
-        return;
       }
 
       forEach(this.focusableComponents, (component) => {
@@ -1419,10 +1391,6 @@ class SpatialNavigationService {
   }
 
   updateAllLayouts() {
-    if (this.nativeMode) {
-      return;
-    }
-
     forOwn(this.focusableComponents, (component, focusKey) => {
       this.updateLayout(focusKey);
     });
@@ -1431,7 +1399,7 @@ class SpatialNavigationService {
   updateLayout(focusKey: string) {
     const component = this.focusableComponents[focusKey];
 
-    if (!component || this.nativeMode || component.layoutUpdated) {
+    if (!component || component.layoutUpdated) {
       return;
     }
 
@@ -1457,10 +1425,6 @@ class SpatialNavigationService {
       onBlur
     }: FocusableComponentUpdatePayload
   ) {
-    if (this.nativeMode) {
-      return;
-    }
-
     const component = this.focusableComponents[focusKey];
 
     if (component) {
@@ -1477,10 +1441,6 @@ class SpatialNavigationService {
         component.node = node;
       }
     }
-  }
-
-  isNativeMode() {
-    return this.nativeMode;
   }
 }
 

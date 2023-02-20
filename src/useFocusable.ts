@@ -202,9 +202,7 @@ const useFocusableHook = <P>({
     focused,
     hasFocusedChild,
     focusKey, // returns either the same focusKey as passed in, or generated one
-    setFocus: SpatialNavigation.isNativeMode()
-      ? noop
-      : SpatialNavigation.setFocus,
+    setFocus: SpatialNavigation.setFocus,
     navigateByDirection: SpatialNavigation.navigateByDirection,
     pause: SpatialNavigation.pause,
     resume: SpatialNavigation.resume,
