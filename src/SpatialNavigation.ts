@@ -206,33 +206,6 @@ class SpatialNavigationService {
   private logIndex: number;
 
   /**
-   * Used to determine the coordinate that will be used to filter items that are over the "edge"
-   */
-  static getCutoffCoordinate(
-    isVertical: boolean,
-    isIncremental: boolean,
-    isSibling: boolean,
-    layout: FocusableComponentLayout
-  ) {
-    const itemX = layout.left;
-    const itemY = layout.top;
-    const itemWidth = layout.width;
-    const itemHeight = layout.height;
-
-    const coordinate = isVertical ? itemY : itemX;
-    const itemSize = isVertical ? itemHeight : itemWidth;
-
-    // eslint-disable-next-line no-nested-ternary
-    return isIncremental
-      ? isSibling
-        ? coordinate
-        : coordinate + itemSize
-      : isSibling
-      ? coordinate + itemSize
-      : coordinate;
-  }
-
-  /**
    * Returns two corners (a and b) coordinates that are used as a reference points
    * Where "a" is always leftmost and topmost corner, and "b" is rightmost bottommost corner
    */
@@ -831,7 +804,7 @@ class SpatialNavigationService {
 
     if (validDirections.includes(direction)) {
       this.log('navigateByDirection', 'direction', direction);
-      this.smartNavigate(direction, null, focusDetails);
+      this.smartNavigate(direction, this.focusKey, focusDetails);
     } else {
       this.log(
         'navigateByDirection',
@@ -850,7 +823,8 @@ class SpatialNavigationService {
       codeList.includes(event.keyCode)
     );
 
-    this.smartNavigate(direction, null, { event });
+    this.smartNavigate(direction, this.focusKey, { event });
+    this.updateAllLayouts();
   }
 
   /**
@@ -859,126 +833,160 @@ class SpatialNavigationService {
    */
   smartNavigate(
     direction: string,
-    fromParentFocusKey: string,
+    focusKey: string,
     focusDetails: FocusDetails
   ) {
     this.log('smartNavigate', 'direction', direction);
-    this.log('smartNavigate', 'fromParentFocusKey', fromParentFocusKey);
-    this.log('smartNavigate', 'this.focusKey', this.focusKey);
+    this.log('smartNavigate', 'focusKey', focusKey);
 
-    if (!fromParentFocusKey) {
-      forOwn(this.focusableComponents, (component) => {
-        // eslint-disable-next-line no-param-reassign
-        component.layoutUpdated = false;
-      });
-    }
+    // Optimization:
+    // The only case we have an override key is when we recursively call this function.
+    // In this case we don't need to refresh the location of all of our nodes because
+    // we already did so in the previous call stack.
+    // if (!overrideFocusKey) {
+    //   forOwn(this.focusableComponents, (component) => {
+    //     // eslint-disable-next-line no-param-reassign
+    //     component.layoutUpdated = false;
+    //   });
+    // }
 
-    const currentComponent =
-      this.focusableComponents[fromParentFocusKey || this.focusKey];
+    const fromComponent =
+      this.focusableComponents[focusKey];
 
     this.log(
       'smartNavigate',
       'currentComponent',
-      currentComponent ? currentComponent.focusKey : undefined,
-      currentComponent ? currentComponent.node : undefined
+      fromComponent?.focusKey,
+      fromComponent?.node
     );
 
-    if (currentComponent) {
-      this.updateLayout(currentComponent.focusKey);
-      const { parentFocusKey, focusKey, layout } = currentComponent;
+    if (!fromComponent || fromComponent.isFocusBoundary) {
+      return;
+    }
 
-      const isVerticalDirection =
-        direction === DIRECTION_DOWN || direction === DIRECTION_UP;
-      const isIncrementalDirection =
-        direction === DIRECTION_DOWN || direction === DIRECTION_RIGHT;
+    // Optimization
+    // this.updateLayout(currentComponent.focusKey);
 
-      const currentCutoffCoordinate =
-        SpatialNavigationService.getCutoffCoordinate(
-          isVerticalDirection,
-          isIncrementalDirection,
-          false,
-          layout
-        );
-
-      /**
-       * Get only the siblings with the coords on the way of our moving direction
-       */
-      const siblings = filter(this.focusableComponents, (component) => {
-        if (
-          component.parentFocusKey === parentFocusKey &&
-          component.focusable
-        ) {
-          this.updateLayout(component.focusKey);
-          const siblingCutoffCoordinate =
-            SpatialNavigationService.getCutoffCoordinate(
-              isVerticalDirection,
-              isIncrementalDirection,
-              true,
-              component.layout
-            );
-
-          return isIncrementalDirection
-            ? siblingCutoffCoordinate >= currentCutoffCoordinate
-            : siblingCutoffCoordinate <= currentCutoffCoordinate;
-        }
-
+    // @todo allow this logic to be overwritten for each "context" and export logic below as default.
+    // This is definitely testable without a browser.
+    const isNodeFocusable = (
+      dir: string,
+      from: FocusableComponent,
+      to: FocusableComponent
+    ) => {
+      if (!to.focusable) {
         return false;
-      });
-
-      if (this.debug) {
-        this.log(
-          'smartNavigate',
-          'currentCutoffCoordinate',
-          currentCutoffCoordinate
-        );
-        this.log(
-          'smartNavigate',
-          'siblings',
-          `${siblings.length} elements:`,
-          siblings.map((sibling) => sibling.focusKey).join(', '),
-          siblings.map((sibling) => sibling.node)
-        );
+      }
+      if (from.focusKey === to.focusKey) {
+        return false;
+      }
+      if (from.parentFocusKey !== to.parentFocusKey) {
+        return false;
       }
 
-      if (this.visualDebugger) {
-        const refCorners = SpatialNavigationService.getRefCorners(
-          direction,
-          false,
-          layout
-        );
+      // Check that the next component is in the direction of the current component.
+      // For example, if direction is "left" we check that the next component is to the left of current.
+      let isValidDirectionally;
 
-        this.visualDebugger.drawPoint(refCorners.a.x, refCorners.a.y);
-        this.visualDebugger.drawPoint(refCorners.b.x, refCorners.b.y);
+      // This is a simple algo that only works in a grid
+      switch (dir) {
+        case DIRECTION_LEFT: {
+          // Check that the right edge of the next is to the left of the left edge of the current
+          const rightEdgeNext = to.layout.left + to.layout.width;
+          const leftEdgeCurrent = from.layout.left;
+          if (leftEdgeCurrent >= rightEdgeNext) {
+            isValidDirectionally = true;
+          }
+          break;
+        }
+        case DIRECTION_RIGHT: {
+          const leftEdgeNext = to.layout.left;
+          const rightEdgeCurrent = from.layout.left + from.layout.width;
+          this.log('isNodeFocusable', 'right', { leftEdgeNext, rightEdgeCurrent })
+          if (rightEdgeCurrent <= leftEdgeNext) {
+            isValidDirectionally = true;
+          }
+          break;
+        }
+        case DIRECTION_DOWN: {
+          const topEdgeNext = to.layout.top;
+          const bottomEdgeCurrent = from.layout.top + from.layout.height;
+          if (topEdgeNext >= bottomEdgeCurrent) {
+            isValidDirectionally = true;
+          }
+          break;
+        }
+        case DIRECTION_UP: {
+          const bottomEdgeNext = to.layout.top + to.layout.height;
+          const topEdgeCurrent = from.layout.top;
+          if (topEdgeCurrent >= bottomEdgeNext) {
+            isValidDirectionally = true;
+          }
+          break;
+        }
+        default:
+          isValidDirectionally = false;
       }
 
-      const sortedSiblings = this.sortSiblingsByPriority(
-        siblings,
-        layout,
-        direction,
-        focusKey
-      );
+      return isValidDirectionally;
+    };
 
-      const nextComponent = first(sortedSiblings);
+    const siblings = filter(this.focusableComponents, (nextComponent) =>
+      isNodeFocusable(direction, fromComponent, nextComponent)
+    );
 
+    if (this.debug) {
       this.log(
         'smartNavigate',
-        'nextComponent',
-        nextComponent ? nextComponent.focusKey : undefined,
-        nextComponent ? nextComponent.node : undefined
+        'siblings',
+        `${siblings.length} elements:`,
+        siblings.map((sibling) => sibling.focusKey).join(', '),
+        siblings.map((sibling) => sibling.node)
+      );
+    }
+
+    if (this.visualDebugger) {
+      const refCorners = SpatialNavigationService.getRefCorners(
+        direction,
+        false,
+        fromComponent.layout
       );
 
-      if (nextComponent) {
-        this.setFocus(nextComponent.focusKey, focusDetails);
-      } else {
-        const parentComponent = this.focusableComponents[parentFocusKey];
-
-        this.saveLastFocusedChildKey(parentComponent, focusKey);
-
-        if (!parentComponent || !parentComponent.isFocusBoundary) {
-          this.smartNavigate(direction, parentFocusKey, focusDetails);
-        }
-      }
+      this.visualDebugger.drawPoint(refCorners.a.x, refCorners.a.y);
+      this.visualDebugger.drawPoint(refCorners.b.x, refCorners.b.y);
     }
+
+    const sortedSiblingsInCurrentDirection = this.sortSiblingsByPriority(
+      siblings,
+      fromComponent.layout,
+      direction,
+      fromComponent.focusKey
+    );
+
+    const nextComponent = first(sortedSiblingsInCurrentDirection);
+
+    this.log(
+      'smartNavigate',
+      'nextComponent',
+      nextComponent?.focusKey,
+      nextComponent?.node
+    );
+
+    if (nextComponent) {
+      this.setFocus(nextComponent.focusKey, focusDetails);
+      return;
+    }
+
+    const parentComponent =
+      this.focusableComponents[fromComponent.parentFocusKey];
+
+    this.saveLastFocusedChildKey(parentComponent, fromComponent.focusKey);
+
+    this.smartNavigate(
+      direction,
+      fromComponent.parentFocusKey,
+      focusDetails
+    );
   }
 
   saveLastFocusedChildKey(component: FocusableComponent, focusKey: string) {
