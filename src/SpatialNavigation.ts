@@ -72,6 +72,7 @@ interface FocusableComponent {
   preferredChildFocusKey?: string;
   focusable: boolean;
   isFocusBoundary: boolean;
+  pointerSupport: boolean;
   autoRestoreFocus: boolean;
   lastFocusedChildKey?: string;
   layout?: FocusableComponentLayout;
@@ -82,6 +83,7 @@ interface FocusableComponentUpdatePayload {
   node: HTMLElement;
   preferredChildFocusKey?: string;
   focusable: boolean;
+  pointerSupport: boolean;
   isFocusBoundary: boolean;
   onEnterPress: (details?: KeyPressDetails) => void;
   onEnterRelease: () => void;
@@ -850,8 +852,7 @@ class SpatialNavigationService {
     //   });
     // }
 
-    const fromComponent =
-      this.focusableComponents[focusKey];
+    const fromComponent = this.focusableComponents[focusKey];
 
     this.log(
       'smartNavigate',
@@ -902,7 +903,10 @@ class SpatialNavigationService {
         case DIRECTION_RIGHT: {
           const leftEdgeNext = to.layout.left;
           const rightEdgeCurrent = from.layout.left + from.layout.width;
-          this.log('isNodeFocusable', 'right', { leftEdgeNext, rightEdgeCurrent })
+          this.log('isNodeFocusable', 'right', {
+            leftEdgeNext,
+            rightEdgeCurrent
+          });
           if (rightEdgeCurrent <= leftEdgeNext) {
             isValidDirectionally = true;
           }
@@ -982,11 +986,7 @@ class SpatialNavigationService {
 
     this.saveLastFocusedChildKey(parentComponent, fromComponent.focusKey);
 
-    this.smartNavigate(
-      direction,
-      fromComponent.parentFocusKey,
-      focusDetails
-    );
+    this.smartNavigate(direction, fromComponent.parentFocusKey, focusDetails);
   }
 
   saveLastFocusedChildKey(component: FocusableComponent, focusKey: string) {
@@ -1126,7 +1126,8 @@ class SpatialNavigationService {
     preferredChildFocusKey,
     autoRestoreFocus,
     focusable,
-    isFocusBoundary
+    isFocusBoundary,
+    pointerSupport,
   }: FocusableComponent) {
     this.focusableComponents[focusKey] = {
       focusKey,
@@ -1144,6 +1145,7 @@ class SpatialNavigationService {
       preferredChildFocusKey,
       focusable,
       isFocusBoundary,
+      pointerSupport,
       autoRestoreFocus,
       lastFocusedChildKey: null,
       layout: {
@@ -1163,6 +1165,7 @@ class SpatialNavigationService {
     };
 
     this.updateLayout(focusKey);
+    this.updatePointerSupport(focusKey, pointerSupport);
 
     /**
      * If for some reason this component was already focused before it was added, call the update
@@ -1177,6 +1180,8 @@ class SpatialNavigationService {
 
     if (componentToRemove) {
       const { parentFocusKey } = componentToRemove;
+
+      this.updatePointerSupport(focusKey, false)
 
       delete this.focusableComponents[focusKey];
 
@@ -1203,6 +1208,18 @@ class SpatialNavigationService {
       if (isFocused && parentComponent && parentComponent.autoRestoreFocus) {
         this.setFocus(parentFocusKey);
       }
+    }
+  }
+
+  updatePointerSupport(focusKey: string, support: boolean) {
+    if (support) {
+      this.focusableComponents[focusKey].node.onmouseenter = () => {
+        if (this.isParticipatingFocusableChild(focusKey)) {
+          this.setFocus(focusKey);
+        }
+      }
+    } else {
+      this.focusableComponents[focusKey].node.onmouseenter = null
     }
   }
 
@@ -1349,6 +1366,16 @@ class SpatialNavigationService {
     );
   }
 
+  isParticipatingFocusableChild(focusKey: string) {
+    return (
+      this.isParticipatingFocusableComponent(focusKey) &&
+      filter(
+        this.focusableComponents,
+        (component) => component.parentFocusKey === focusKey
+      ).length === 0
+    );
+  }
+
   onIntermediateNodeBecameFocused(
     focusKey: string,
     focusDetails: FocusDetails
@@ -1426,6 +1453,7 @@ class SpatialNavigationService {
       preferredChildFocusKey,
       focusable,
       isFocusBoundary,
+      pointerSupport,
       onEnterPress,
       onEnterRelease,
       onArrowPress,
@@ -1445,9 +1473,13 @@ class SpatialNavigationService {
       component.onFocus = onFocus;
       component.onBlur = onBlur;
 
+      this.updatePointerSupport(focusKey, false)
+      
       if (node) {
         component.node = node;
       }
+
+      this.updatePointerSupport(focusKey, pointerSupport)
     }
   }
 }
