@@ -15,7 +15,7 @@ For example: hyperlinks, buttons, menu items or any interactible part of the Use
 
 ![Example](/readme-assets/norigin-spatial-navigation/norigin-spatial-navigation.gif)
 
-[Example Source](https://github.com/NoriginMedia/Norigin-Spatial-Navigation/blob/master/src/App.tsx)
+[Example Source](https://github.com/NoriginMedia/Norigin-Spatial-Navigation/blob/master/src/examples/App.tsx)
 
 # Supported Devices
 The Norigin Spatial Navigation library is theoretically intended to work on any web-based platform such as Browsers and Smart TVs.

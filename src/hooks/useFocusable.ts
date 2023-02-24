@@ -8,16 +8,16 @@ import {
 } from 'react';
 import noop from 'lodash/noop';
 import uniqueId from 'lodash/uniqueId';
-import { SpatialNavigation } from './SpatialNavigation';
-import { useFocusContext } from './useFocusedContext';
+import { SpatialNavigation } from '../SpatialNavigation';
+import useFocusContext from './useFocusContext';
 import useEffectOnce from './useEffectOnce';
 import {
   FocusableComponentLayout,
   FocusDetails,
   KeyPressDetails,
   SpatialNavigationService
-} from './types';
-import { smartNavigate } from './helpers';
+} from '../types';
+import { smartNavigate } from '../helpers';
 
 export type EnterPressHandler<P = object> = (
   props: P,

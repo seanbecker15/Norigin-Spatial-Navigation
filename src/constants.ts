@@ -9,7 +9,7 @@ export const DEFAULT_KEY_MAP = {
   [DIRECTION_UP]: [38],
   [DIRECTION_RIGHT]: [39],
   [DIRECTION_DOWN]: [40],
-  [KEY_ENTER]: [13]
+  [KEY_ENTER]: [13],
 };
 
 export const ROOT_FOCUS_KEY = 'SN:ROOT';
@@ -20,3 +20,7 @@ export const THROTTLE_OPTIONS = {
   leading: true,
   trailing: false
 };
+
+export const USE_CUSTOM_LAYOUT = true;
+
+export const ELEMENT_NODE = 1;

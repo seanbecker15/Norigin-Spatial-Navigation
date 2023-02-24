@@ -5,7 +5,6 @@ import forEach from 'lodash/forEach';
 import forOwn from 'lodash/forOwn';
 import throttle from 'lodash/throttle';
 import difference from 'lodash/difference';
-import measureLayout from './measureLayout';
 import VisualDebugger from './VisualDebugger';
 import {
   BackwardsCompatibleKeyMap,
@@ -24,7 +23,7 @@ import {
   KEY_ENTER,
   THROTTLE_OPTIONS
 } from './constants';
-import { getChildClosestToOrigin, normalizeKeyMap } from './helpers';
+import { getChildClosestToOrigin, measureLayout, normalizeKeyMap } from './helpers';
 
 // Separate out the algorithms for:
 // - Calculating node location

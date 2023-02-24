@@ -4,6 +4,6 @@ export {
   KeyPressDetails
 } from './types';
 
-export * from './useFocusable';
-export * from './useFocusedContext';
+export { default as FocusContext } from './context';
+export * from './hooks/useFocusable';
 export * from './SpatialNavigation';

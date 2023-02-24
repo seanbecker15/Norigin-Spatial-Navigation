@@ -12,13 +12,13 @@ import shuffle from 'lodash/shuffle';
 import {
   useFocusable,
   init,
-  FocusContext,
   FocusDetails,
   FocusableComponentLayout,
   KeyPressDetails
-} from './index';
+} from '../index';
+import FocusContext from '../context';
 
-const logo = require('../logo.png').default;
+const logo = require('../../logo.png').default;
 
 init({
   debug: true,
