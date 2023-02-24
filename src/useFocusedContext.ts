@@ -1,5 +1,5 @@
 import { useContext, createContext } from 'react';
-import { ROOT_FOCUS_KEY } from './SpatialNavigation';
+import { ROOT_FOCUS_KEY } from './constants';
 
 export const FocusContext = createContext(ROOT_FOCUS_KEY);
 
