@@ -339,11 +339,6 @@ or an automatically generated one.
 #### `getCurrentFocusKey` (function) `() => string`
 Returns the currently focused component's focus key.
 
-##### `navigateByDirection` (function) `(direction: string, focusDetails: FocusDetails) => void`
-Method to manually navigation to a certain direction. I.e. you can assign a mouse-wheel to navigate Up and Down.
-Also useful when you have some "Arrow-like" UI in the app that is meant to navigate in certain direction when pressed
-with the mouse or a "magic remote" on some TVs.
-
 ##### `pause` (function)
 Pauses all the key event handlers.
 
