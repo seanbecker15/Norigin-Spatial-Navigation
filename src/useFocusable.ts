@@ -8,12 +8,15 @@ import {
 } from 'react';
 import noop from 'lodash/noop';
 import uniqueId from 'lodash/uniqueId';
-import {
-  SpatialNavigation,
-} from './SpatialNavigation';
+import { SpatialNavigation } from './SpatialNavigation';
 import { useFocusContext } from './useFocusedContext';
 import useEffectOnce from './useEffectOnce';
-import { FocusableComponentLayout, FocusDetails, KeyPressDetails, SpatialNavigationService } from './types';
+import {
+  FocusableComponentLayout,
+  FocusDetails,
+  KeyPressDetails,
+  SpatialNavigationService
+} from './types';
 import { smartNavigate } from './helpers';
 
 export type EnterPressHandler<P = object> = (
@@ -41,7 +44,7 @@ export type BlurHandler<P = object> = (
   details: FocusDetails
 ) => void;
 
-export type NavigateHandler =  (
+export type NavigateHandler = (
   currentFocusKey: string,
   direction: string,
   details: FocusDetails,
@@ -210,7 +213,7 @@ const useFocusableHook = <P>({
     onArrowPressHandler,
     onFocusHandler,
     onBlurHandler,
-    onNavigateHandler,
+    onNavigateHandler
   ]);
 
   return {

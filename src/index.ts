@@ -1,8 +1,8 @@
 export {
-    FocusDetails,
-    FocusableComponentLayout,
-    KeyPressDetails
-  } from './types';
+  FocusDetails,
+  FocusableComponentLayout,
+  KeyPressDetails
+} from './types';
 
 export * from './useFocusable';
 export * from './useFocusedContext';

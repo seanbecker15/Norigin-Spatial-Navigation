@@ -163,30 +163,30 @@ function getRefCorners(
  * Calculates if the sibling node is intersecting enough with the ref node by the secondary coordinate
  */
 function getIsAdjacentSlice(
-    refCorners: Corners,
-    siblingCorners: Corners,
-    isVerticalDirection: boolean
-  ) {
-    const { a: refA, b: refB } = refCorners;
-    const { a: siblingA, b: siblingB } = siblingCorners;
-    const coordinate = isVerticalDirection ? 'x' : 'y';
-  
-    const refCoordinateA = refA[coordinate];
-    const refCoordinateB = refB[coordinate];
-    const siblingCoordinateA = siblingA[coordinate];
-    const siblingCoordinateB = siblingB[coordinate];
-  
-    const thresholdDistance =
-      (refCoordinateB - refCoordinateA) * ADJACENT_SLICE_THRESHOLD;
-  
-    const intersectionLength = Math.max(
-      0,
-      Math.min(refCoordinateB, siblingCoordinateB) -
-        Math.max(refCoordinateA, siblingCoordinateA)
-    );
-  
-    return intersectionLength >= thresholdDistance;
-  }
+  refCorners: Corners,
+  siblingCorners: Corners,
+  isVerticalDirection: boolean
+) {
+  const { a: refA, b: refB } = refCorners;
+  const { a: siblingA, b: siblingB } = siblingCorners;
+  const coordinate = isVerticalDirection ? 'x' : 'y';
+
+  const refCoordinateA = refA[coordinate];
+  const refCoordinateB = refB[coordinate];
+  const siblingCoordinateA = siblingA[coordinate];
+  const siblingCoordinateB = siblingB[coordinate];
+
+  const thresholdDistance =
+    (refCoordinateB - refCoordinateA) * ADJACENT_SLICE_THRESHOLD;
+
+  const intersectionLength = Math.max(
+    0,
+    Math.min(refCoordinateB, siblingCoordinateB) -
+      Math.max(refCoordinateA, siblingCoordinateA)
+  );
+
+  return intersectionLength >= thresholdDistance;
+}
 
 /**
  * Inspired by: https://developer.mozilla.org/en-US/docs/Mozilla/Firefox_OS_for_TV/TV_remote_control_navigation#Algorithm_design
@@ -356,12 +356,12 @@ function smartNavigate(
 }
 
 const getChildClosestToOrigin = (children: FocusableComponent[]) => {
-    const childrenClosestToOrigin = sortBy(
-      children,
-      ({ layout }) => Math.abs(layout.left) + Math.abs(layout.top)
-    );
-  
-    return first(childrenClosestToOrigin);
-  };
+  const childrenClosestToOrigin = sortBy(
+    children,
+    ({ layout }) => Math.abs(layout.left) + Math.abs(layout.top)
+  );
 
-export { getChildClosestToOrigin, smartNavigate }
+  return first(childrenClosestToOrigin);
+};
+
+export { getChildClosestToOrigin, smartNavigate };
