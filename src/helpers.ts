@@ -346,13 +346,13 @@ function smartNavigate(
   const nextComponent = first(sortedSiblingsInCurrentDirection);
 
   if (nextComponent) {
-    svc.setFocus(nextComponent.focusKey, focusDetails);
+    svc.focus(nextComponent.focusKey, focusDetails);
     return;
   }
 
   const parentComponent = focusableComponents[fromComponent.parentFocusKey];
 
-  svc.saveLastFocusedChildKey(parentComponent, fromComponent.focusKey);
+  svc.setParentLastFocusedChildKey(parentComponent, fromComponent.focusKey);
 
   smartNavigate(fromComponent.parentFocusKey, direction, focusDetails, svc);
 }

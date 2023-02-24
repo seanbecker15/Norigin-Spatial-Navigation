@@ -122,7 +122,8 @@ class SpatialNavigationServiceClass implements SpatialNavigationService {
     this.pause = this.pause.bind(this);
     this.resume = this.resume.bind(this);
     this.getFocusableComponents = this.getFocusableComponents.bind(this);
-    this.setFocus = this.setFocus.bind(this);
+    this.getFocusableComponent = this.getFocusableComponent.bind(this);
+    this.focus = this.focus.bind(this);
     this.updateAllLayouts = this.updateAllLayouts.bind(this);
     this.init = this.init.bind(this);
     this.setThrottle = this.setThrottle.bind(this);
@@ -356,7 +357,7 @@ class SpatialNavigationServiceClass implements SpatialNavigationService {
      * If for some reason this component was already focused before it was added, call the update
      */
     if (focusKey === this.focusKey) {
-      this.setFocus(focusKey);
+      this.focus(focusKey);
     }
   }
 
@@ -430,7 +431,7 @@ class SpatialNavigationServiceClass implements SpatialNavigationService {
        * If the component was also focused at this time, focus another one
        */
       if (isFocused && parentComponent && parentComponent.autoRestoreFocus) {
-        this.setFocus(parentFocusKey);
+        this.focus(parentFocusKey);
       }
     }
   }
@@ -439,7 +440,7 @@ class SpatialNavigationServiceClass implements SpatialNavigationService {
     if (support) {
       this.focusableComponents[focusKey].node.onmouseenter = () => {
         if (this.isParticipatingFocusableChild(focusKey)) {
-          this.setFocus(focusKey);
+          this.focus(focusKey);
         }
       };
     } else {
@@ -560,97 +561,143 @@ class SpatialNavigationServiceClass implements SpatialNavigationService {
     }
   }
 
-  saveLastFocusedChildKey(component: FocusableComponent, focusKey: string) {
-    if (component) {
-      this.log(
-        'saveLastFocusedChildKey',
-        `${component.focusKey} lastFocusedChildKey set`,
-        focusKey
-      );
-
-      // eslint-disable-next-line no-param-reassign
-      component.lastFocusedChildKey = focusKey;
+  /**
+   * Focuses on `targetFocusKey` using the following algorithm.
+   * 
+   * - If the target component is a leaf node, it is valid for focus.
+   * - If the target component is a parent, checks for the following (in this order):
+   *    1. Last focused child - `lastFocusedChildKey`
+   *    2. Preferred child - `preferredChildFocusKey`
+   *    3. Closest child to the topleft corner of the page
+   * 
+   * Once a valid target is found:
+   * 1. Calls old focused component's `onBlur` handler
+   * 2. Updates value of `focusKey`
+   * 3. Calls new focused component's `onFocus` handler
+   * 
+   * @param targetFocusKey a parent or leaf node to focus on
+   * @param focusDetails (optional) extra information passed in to `onFocus` and `onBlur` callback handlers
+   */
+  public focus(targetFocusKey: string, focusDetails: FocusDetails = {}) {
+    if (!this.enabled) {
+      return;
     }
+
+    this.log('setFocus', 'focusKey', targetFocusKey);
+
+    const oldFocusKey = this.focusKey;
+    const newFocusKey = this.getValidLeafFocusKey(targetFocusKey);
+
+    this.log('setFocus', 'newFocusKey', newFocusKey);
+
+    const oldFocusableComponent = this.getFocusableComponent(oldFocusKey);
+    const newFocusableComponent = this.getFocusableComponent(newFocusKey);
+
+    if (oldFocusableComponent && oldFocusKey !== newFocusKey) {
+      oldFocusableComponent.onUpdateFocus(false);
+      oldFocusableComponent.onBlur(
+        this.getNodeLayoutByFocusKey(oldFocusKey),
+        focusDetails
+      );
+    }
+
+    this.focusKey = newFocusKey;
+
+    if (newFocusableComponent && oldFocusKey !== newFocusKey) {
+      newFocusableComponent.onUpdateFocus(true);
+      newFocusableComponent.onFocus(
+        this.getNodeLayoutByFocusKey(newFocusKey),
+        focusDetails
+      );
+    }
+
+    this.updateParentsHasFocusedChild(newFocusKey, focusDetails);
+    this.updateParentsLastFocusedChild(oldFocusKey);
   }
 
-  // I like the concept of this one
   /**
-   * This function tries to determine the next component to Focus
-   * It's either the target node OR the one down by the Tree if node has children components
-   * Based on "targetFocusKey" which means the "intended component to focus"
+   * Uses the structure of the focusableComponent tree to find a valid leaf node for focus.
+   *
+   * If the target component is a parent, checks for the following (in this order):
+   * - Last focused child (`lastFocusedChildKey`)
+   * - Preferred child (`preferredChildFocusKey`) (@todo rename for consistency)
+   * - Topleft most node
+   *
    */
-  getNextFocusKey(targetFocusKey: string): string {
-    const targetComponent = this.focusableComponents[targetFocusKey];
+  private getValidLeafFocusKey(targetFocusKey: string): string {
+    const targetComponent = this.getFocusableComponent(targetFocusKey);
 
     /**
      * Security check, if component doesn't exist, stay on the same focusKey
      */
     if (!targetComponent) {
-      return targetFocusKey;
+      return this.focusKey;
     }
 
-    const children = filter(
+    const { lastFocusedChildKey, preferredChildFocusKey } = targetComponent;
+
+    this.log('getNextFocusKey', 'lastFocusedChildKey is', lastFocusedChildKey);
+    this.log(
+      'getNextFocusKey',
+      'preferredChildFocusKey is',
+      preferredChildFocusKey
+    );
+
+    /**
+     * First of all trying to focus last focused child
+     * @todo - check that this is a child?
+     */
+    if (
+      lastFocusedChildKey &&
+      targetComponent.saveLastFocusedChild &&
+      this.isParticipatingFocusableComponent(lastFocusedChildKey)
+    ) {
+      this.log(
+        'getNextFocusKey',
+        'lastFocusedChildKey will be focused',
+        lastFocusedChildKey
+      );
+
+      return this.getValidLeafFocusKey(lastFocusedChildKey);
+    }
+
+    /**
+     * If there is no lastFocusedChild, trying to focus the preferred focused key
+     * @todo - check that this is a child?
+     */
+    if (
+      preferredChildFocusKey &&
+      this.isParticipatingFocusableComponent(preferredChildFocusKey)
+    ) {
+      this.log(
+        'getNextFocusKey',
+        'preferredChildFocusKey will be focused',
+        preferredChildFocusKey
+      );
+
+      return this.getValidLeafFocusKey(preferredChildFocusKey);
+    }
+
+    const participatingChildren = filter(
       this.focusableComponents,
       (component) =>
         component.parentFocusKey === targetFocusKey && component.focusable
     );
 
-    if (children.length > 0) {
-      const { lastFocusedChildKey, preferredChildFocusKey } = targetComponent;
-
-      this.log(
-        'getNextFocusKey',
-        'lastFocusedChildKey is',
-        lastFocusedChildKey
-      );
-      this.log(
-        'getNextFocusKey',
-        'preferredChildFocusKey is',
-        preferredChildFocusKey
-      );
-
-      /**
-       * First of all trying to focus last focused child
-       */
-      if (
-        lastFocusedChildKey &&
-        targetComponent.saveLastFocusedChild &&
-        this.isParticipatingFocusableComponent(lastFocusedChildKey)
-      ) {
-        this.log(
-          'getNextFocusKey',
-          'lastFocusedChildKey will be focused',
-          lastFocusedChildKey
-        );
-
-        return this.getNextFocusKey(lastFocusedChildKey);
-      }
-
-      /**
-       * If there is no lastFocusedChild, trying to focus the preferred focused key
-       */
-      if (
-        preferredChildFocusKey &&
-        this.isParticipatingFocusableComponent(preferredChildFocusKey)
-      ) {
-        this.log(
-          'getNextFocusKey',
-          'preferredChildFocusKey will be focused',
-          preferredChildFocusKey
-        );
-
-        return this.getNextFocusKey(preferredChildFocusKey);
-      }
-
+    if (participatingChildren.length > 0) {
       /**
        * Otherwise, trying to focus something by coordinates
        */
-      children.forEach((component) => this.updateLayout(component.focusKey));
-      const { focusKey: childKey } = getChildClosestToOrigin(children);
+      participatingChildren.forEach((component) =>
+        this.updateLayout(component.focusKey)
+      );
+      const { focusKey: childKey } = getChildClosestToOrigin(
+        participatingChildren
+      );
 
       this.log('getNextFocusKey', 'childKey will be focused', childKey);
 
-      return this.getNextFocusKey(childKey);
+      return this.getValidLeafFocusKey(childKey);
     }
 
     /**
@@ -659,55 +706,6 @@ class SpatialNavigationServiceClass implements SpatialNavigationService {
     this.log('getNextFocusKey', 'targetFocusKey', targetFocusKey);
 
     return targetFocusKey;
-  }
-
-  setCurrentFocusedKey(newFocusKey: string, focusDetails: FocusDetails) {
-    if (
-      this.isFocusableComponent(this.focusKey) &&
-      newFocusKey !== this.focusKey
-    ) {
-      const oldComponent = this.focusableComponents[this.focusKey];
-      const parentComponent =
-        this.focusableComponents[oldComponent.parentFocusKey];
-
-      this.saveLastFocusedChildKey(parentComponent, this.focusKey);
-
-      oldComponent.onUpdateFocus(false);
-      oldComponent.onBlur(
-        this.getNodeLayoutByFocusKey(this.focusKey),
-        focusDetails
-      );
-    }
-
-    this.focusKey = newFocusKey;
-
-    if (this.isFocusableComponent(this.focusKey)) {
-      const newComponent = this.focusableComponents[this.focusKey];
-
-      newComponent.onUpdateFocus(true);
-      newComponent.onFocus(
-        this.getNodeLayoutByFocusKey(this.focusKey),
-        focusDetails
-      );
-    }
-  }
-
-  // I like this
-  setFocus(focusKey: string, focusDetails: FocusDetails = {}) {
-    if (!this.enabled) {
-      return;
-    }
-
-    this.log('setFocus', 'focusKey', focusKey);
-
-    const lastFocusedKey = this.focusKey;
-    const newFocusKey = this.getNextFocusKey(focusKey);
-
-    this.log('setFocus', 'newFocusKey', newFocusKey);
-
-    this.setCurrentFocusedKey(newFocusKey, focusDetails);
-    this.updateParentsHasFocusedChild(newFocusKey, focusDetails);
-    this.updateParentsLastFocusedChild(lastFocusedKey);
   }
 
   getNodeLayoutByFocusKey(focusKey: string) {
@@ -786,13 +784,26 @@ class SpatialNavigationServiceClass implements SpatialNavigationService {
       const parentComponent = this.focusableComponents[parentFocusKey];
 
       if (parentComponent) {
-        this.saveLastFocusedChildKey(
+        this.setParentLastFocusedChildKey(
           parentComponent,
           currentComponent.focusKey
         );
       }
 
       currentComponent = parentComponent;
+    }
+  }
+
+  setParentLastFocusedChildKey(component: FocusableComponent, focusKey: string) {
+    if (component) {
+      this.log(
+        'saveLastFocusedChildKey',
+        `${component.focusKey} lastFocusedChildKey set`,
+        focusKey
+      );
+
+      // eslint-disable-next-line no-param-reassign
+      component.lastFocusedChildKey = focusKey;
     }
   }
 
@@ -822,10 +833,8 @@ class SpatialNavigationServiceClass implements SpatialNavigationService {
    * 'focusable' focusableComponent). Seems less confusing than calling it isFocusableFocusableComponent()
    */
   isParticipatingFocusableComponent(focusKey: string) {
-    return (
-      this.isFocusableComponent(focusKey) &&
-      this.focusableComponents[focusKey].focusable
-    );
+    const component = this.getFocusableComponent(focusKey);
+    return component?.focusable;
   }
 
   isParticipatingFocusableChild(focusKey: string) {
@@ -842,16 +851,15 @@ class SpatialNavigationServiceClass implements SpatialNavigationService {
     return this.focusableComponents;
   }
 
+  getFocusableComponent(focusKey: string) {
+    return this.focusableComponents[focusKey];
+  }
+
   /**
    * Returns the current focus key
    */
   getCurrentFocusKey(): string {
     return this.focusKey;
-  }
-
-  // @todo improve name
-  isFocusableComponent(focusKey: string) {
-    return !!this.focusableComponents[focusKey];
   }
 
   getKeyMap() {

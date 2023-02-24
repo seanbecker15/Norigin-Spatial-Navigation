@@ -149,7 +149,7 @@ const useFocusableHook = <P>({
 
   const focusSelf = useCallback(
     (focusDetails: FocusDetails = {}) => {
-      SpatialNavigation.setFocus(focusKey, focusDetails);
+      SpatialNavigation.focus(focusKey, focusDetails);
     },
     [focusKey]
   );
@@ -222,7 +222,7 @@ const useFocusableHook = <P>({
     focused,
     hasFocusedChild,
     focusKey, // returns either the same focusKey as passed in, or generated one
-    setFocus: SpatialNavigation.setFocus,
+    setFocus: SpatialNavigation.focus,
     pause: SpatialNavigation.pause,
     resume: SpatialNavigation.resume,
     updateAllLayouts: SpatialNavigation.updateAllLayouts,

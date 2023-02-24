@@ -10,10 +10,9 @@ export interface FocusableComponentLayout {
 
 export interface SpatialNavigationService {
   getCurrentFocusKey(): string;
-  getNextFocusKey(targetFocusKey: string): string;
   getFocusableComponents(): { [index: string]: FocusableComponent };
-  setFocus(focusKey: string, focusDetails: FocusDetails): void
-  saveLastFocusedChildKey(component: FocusableComponent, focusKey: string): void
+  focus(focusKey: string, focusDetails: FocusDetails): void
+  setParentLastFocusedChildKey(component: FocusableComponent, focusKey: string): void
 }
 
 /**
