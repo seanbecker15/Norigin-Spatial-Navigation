@@ -10,12 +10,11 @@ import noop from 'lodash/noop';
 import uniqueId from 'lodash/uniqueId';
 import {
   SpatialNavigation,
-  FocusableComponentLayout,
-  FocusDetails,
-  KeyPressDetails
 } from './SpatialNavigation';
 import { useFocusContext } from './useFocusedContext';
 import useEffectOnce from './useEffectOnce';
+import { FocusableComponentLayout, FocusDetails, KeyPressDetails, SpatialNavigationService } from './types';
+import { smartNavigate } from './helpers';
 
 export type EnterPressHandler<P = object> = (
   props: P,
@@ -42,6 +41,13 @@ export type BlurHandler<P = object> = (
   details: FocusDetails
 ) => void;
 
+export type NavigateHandler =  (
+  currentFocusKey: string,
+  direction: string,
+  details: FocusDetails,
+  svc: SpatialNavigationService
+) => void;
+
 export interface UseFocusableConfig<P = object> {
   focusable?: boolean;
   saveLastFocusedChild?: boolean;
@@ -56,6 +62,7 @@ export interface UseFocusableConfig<P = object> {
   onArrowPress?: ArrowPressHandler<P>;
   onFocus?: FocusHandler<P>;
   onBlur?: BlurHandler<P>;
+  onNavigate?: NavigateHandler;
   extraProps?: P;
 }
 
@@ -66,7 +73,6 @@ export interface UseFocusableResult {
   hasFocusedChild: boolean;
   focusKey: string;
   setFocus: (focusKey: string, focusDetails?: FocusDetails) => void;
-  navigateByDirection: (direction: string, focusDetails: FocusDetails) => void;
   pause: () => void;
   resume: () => void;
   updateAllLayouts: () => void;
@@ -85,6 +91,7 @@ const useFocusableHook = <P>({
   onEnterPress = noop,
   onEnterRelease = noop,
   onArrowPress = () => true,
+  onNavigate = smartNavigate,
   onFocus = noop,
   onBlur = noop,
   extraProps
@@ -119,6 +126,8 @@ const useFocusableHook = <P>({
     },
     [extraProps, onBlur]
   );
+
+  const onNavigateHandler = useCallback(onNavigate, [onNavigate]);
 
   const ref = useRef(null);
 
@@ -158,6 +167,7 @@ const useFocusableHook = <P>({
       onUpdateFocus: (isFocused = false) => setFocused(isFocused),
       onUpdateHasFocusedChild: (isFocused = false) =>
         setHasFocusedChild(isFocused),
+      onNavigate: () => {},
       saveLastFocusedChild,
       trackChildren,
       isFocusBoundary,
@@ -186,7 +196,8 @@ const useFocusableHook = <P>({
       onEnterRelease: onEnterReleaseHandler,
       onArrowPress: onArrowPressHandler,
       onFocus: onFocusHandler,
-      onBlur: onBlurHandler
+      onBlur: onBlurHandler,
+      onNavigate: onNavigateHandler
     });
   }, [
     focusKey,
@@ -199,6 +210,7 @@ const useFocusableHook = <P>({
     onArrowPressHandler,
     onFocusHandler,
     onBlurHandler,
+    onNavigateHandler,
   ]);
 
   return {
@@ -208,7 +220,6 @@ const useFocusableHook = <P>({
     hasFocusedChild,
     focusKey, // returns either the same focusKey as passed in, or generated one
     setFocus: SpatialNavigation.setFocus,
-    navigateByDirection: SpatialNavigation.navigateByDirection,
     pause: SpatialNavigation.pause,
     resume: SpatialNavigation.resume,
     updateAllLayouts: SpatialNavigation.updateAllLayouts,

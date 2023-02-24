@@ -21,7 +21,7 @@ import {
 const logo = require('../logo.png').default;
 
 init({
-  debug: false,
+  debug: true,
   visualDebug: false
 });
 
@@ -136,14 +136,13 @@ function Menu({ focusKey: focusKeyParam }: MenuProps) {
     hasFocusedChild,
     focusKey
     // setFocus, -- to set focus manually to some focusKey
-    // navigateByDirection, -- to manually navigate by direction
     // pause, -- to pause all navigation events
     // resume, -- to resume all navigation events
     // updateAllLayouts, -- to force update all layouts when needed
     // getCurrentFocusKey -- to get the current focus key
   } = useFocusable({
     focusable: true,
-    saveLastFocusedChild: false,
+    saveLastFocusedChild: true,
     trackChildren: true,
     autoRestoreFocus: true,
     isFocusBoundary: false,
@@ -218,6 +217,7 @@ interface AssetProps {
 
 function Asset({ title, color, onEnterPress, onFocus }: AssetProps) {
   const { ref, focused } = useFocusable({
+    pointerSupport: false,
     onEnterPress,
     onFocus,
     extraProps: {
