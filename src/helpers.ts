@@ -10,7 +10,9 @@ import {
   FocusableComponentLayout,
   FocusDetails,
   SpatialNavigationService,
-  Corners
+  Corners,
+  BackwardsCompatibleKeyMap,
+  KeyMap
 } from './types';
 
 const ADJACENT_SLICE_THRESHOLD = 0.2;
@@ -364,4 +366,22 @@ const getChildClosestToOrigin = (children: FocusableComponent[]) => {
   return first(childrenClosestToOrigin);
 };
 
-export { getChildClosestToOrigin, smartNavigate };
+/**
+ * Takes either a BackwardsCompatibleKeyMap and transforms it into a the new KeyMap format
+ * to ensure backwards compatibility.
+ */
+const normalizeKeyMap = (keyMap: BackwardsCompatibleKeyMap) => {
+  const newKeyMap: KeyMap = {};
+
+  Object.entries(keyMap).forEach(([key, value]) => {
+    if (typeof value === 'number') {
+      newKeyMap[key] = [value];
+    } else if (Array.isArray(value)) {
+      newKeyMap[key] = value;
+    }
+  });
+
+  return newKeyMap;
+};
+
+export { getChildClosestToOrigin, normalizeKeyMap, smartNavigate };

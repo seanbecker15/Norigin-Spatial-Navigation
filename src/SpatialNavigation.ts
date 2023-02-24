@@ -19,48 +19,12 @@ import {
   SpatialNavigationService
 } from './types';
 import {
-  DIRECTION_LEFT,
-  DIRECTION_UP,
-  DIRECTION_RIGHT,
-  DIRECTION_DOWN,
-  KEY_ENTER
+  DEBUG_FN_COLORS,
+  DEFAULT_KEY_MAP,
+  KEY_ENTER,
+  THROTTLE_OPTIONS
 } from './constants';
-import { getChildClosestToOrigin } from './helpers';
-
-const DEFAULT_KEY_MAP = {
-  [DIRECTION_LEFT]: [37],
-  [DIRECTION_UP]: [38],
-  [DIRECTION_RIGHT]: [39],
-  [DIRECTION_DOWN]: [40],
-  [KEY_ENTER]: [13]
-};
-
-export const ROOT_FOCUS_KEY = 'SN:ROOT';
-
-const DEBUG_FN_COLORS = ['#0FF', '#FF0', '#F0F'];
-
-const THROTTLE_OPTIONS = {
-  leading: true,
-  trailing: false
-};
-
-/**
- * Takes either a BackwardsCompatibleKeyMap and transforms it into a the new KeyMap format
- * to ensure backwards compatibility.
- */
-const normalizeKeyMap = (keyMap: BackwardsCompatibleKeyMap) => {
-  const newKeyMap: KeyMap = {};
-
-  Object.entries(keyMap).forEach(([key, value]) => {
-    if (typeof value === 'number') {
-      newKeyMap[key] = [value];
-    } else if (Array.isArray(value)) {
-      newKeyMap[key] = value;
-    }
-  });
-
-  return newKeyMap;
-};
+import { getChildClosestToOrigin, normalizeKeyMap } from './helpers';
 
 // Separate out the algorithms for:
 // - Calculating node location
